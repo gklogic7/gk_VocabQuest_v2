@@ -68,6 +68,11 @@
           </div>
 
           <div class="top-bar-actions">
+            <button id="top-import-words-btn" class="btn-secondary" style="padding: 6px 12px; font-size: 0.825rem; display: flex; align-items: center; gap: 6px;" title="Import English dictionary words and expansion packs">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Import Words</span>
+            </button>
+
             <div class="stat-chip" title="Daily Active Streak">
               <span>🔥</span>
               <span class="header-streak-val">1d</span>
@@ -170,6 +175,103 @@
         <div style="display: flex; gap: 10px;">
           <button class="btn-secondary modal-close-trigger" style="flex: 1;">Cancel</button>
           <button class="btn-primary" id="reset-confirm-btn" style="flex: 1; background: var(--error);">Reset Data</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Words & Dictionary Packs Modal -->
+    <div id="import-words-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+      <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header">
+          <div>
+            <h3 id="import-modal-title" style="font-size: 1.25rem; font-weight: 800;">Import English Dictionary Words</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Expand your vocabulary database with curated packs or custom files.</p>
+          </div>
+          <button class="modal-close-btn modal-close-trigger" aria-label="Close dialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; margin-bottom: 18px;">
+          <button id="import-tab-btn-packs" class="btn-secondary active" style="font-size: 0.85rem;">Word Packs</button>
+          <button id="import-tab-btn-custom" class="btn-secondary" style="font-size: 0.85rem;">Upload JSON / Paste</button>
+        </div>
+
+        <!-- Tab 1: Word Packs -->
+        <div id="import-tab-packs" style="display: block;">
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 2px;">🎓 GRE & SAT Academic Vocabulary Pack</h4>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">20 advanced college-level words with comprehensive examples and phonetics.</p>
+              </div>
+              <button class="btn-primary" style="padding: 7px 14px; font-size: 0.825rem; flex-shrink: 0;" onclick="window.importPresetPack('gre')">
+                + Add Pack
+              </button>
+            </div>
+
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 2px;">🔬 Science, Tech & Philosophy Glossary</h4>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">20 modern scientific terms across biology, physics, computing, and logic.</p>
+              </div>
+              <button class="btn-primary" style="padding: 7px 14px; font-size: 0.825rem; flex-shrink: 0;" onclick="window.importPresetPack('science')">
+                + Add Pack
+              </button>
+            </div>
+
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 2px;">📖 Literary Gems & Expressive Words</h4>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">20 evocative descriptive words, metaphors, and sensory vocabulary.</p>
+              </div>
+              <button class="btn-primary" style="padding: 7px 14px; font-size: 0.825rem; flex-shrink: 0;" onclick="window.importPresetPack('literature')">
+                + Add Pack
+              </button>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; background: var(--primary-subtle); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid rgba(101, 88, 245, 0.2);">
+            <div>
+              <span style="font-weight: 700; font-size: 0.9rem; color: var(--primary);">Import All Master Packs (+60 Words)</span>
+              <p style="font-size: 0.775rem; color: var(--text-muted);">Expands the dictionary to over 165+ complete words instantly.</p>
+            </div>
+            <button class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="window.importPresetPack('all')">
+              Import All
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Custom Upload / Paste -->
+        <div id="import-tab-custom" style="display: none;">
+          <div style="margin-bottom: 14px;">
+            <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Paste Words (JSON or "Word: Definition" list):</label>
+            <textarea id="import-custom-text" rows="6" style="width: 100%; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 10px; font-family: monospace; font-size: 0.825rem; background: var(--bg-subtle); color: var(--text-main); resize: vertical;" placeholder='Example plain text:&#10;Epiphany: A moment of sudden revelation&#10;Resilience: The capacity to recover quickly&#10;&#10;Or JSON array:&#10;[{"word": "Serenity", "simpleDef": "Peaceful state", "pos": "noun"}]'></textarea>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="import-auto-unlock" checked />
+              <span>Automatically unlock imported words in Dictionary Book</span>
+            </label>
+
+            <button class="btn-secondary" id="import-upload-file-btn" style="font-size: 0.8rem; padding: 6px 12px;">
+              📁 Choose JSON File
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn-secondary modal-close-trigger">Cancel</button>
+            <button class="btn-primary" id="import-custom-submit-btn">Parse & Import Words</button>
+          </div>
+        </div>
+
+        <!-- Active Database Stats Footer -->
+        <div style="margin-top: 18px; border-top: 1px solid var(--border-subtle); padding-top: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+          <span id="import-modal-current-count">Active Dictionary: 106 built-in words</span>
+          <button id="import-clear-custom-btn" style="color: var(--error); font-size: 0.775rem; background: none; border: none; text-decoration: underline;" onclick="window.clearCustomWords()">
+            Remove Custom Imported Words
+          </button>
         </div>
       </div>
     </div>

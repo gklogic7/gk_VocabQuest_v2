@@ -1,13 +1,26 @@
 import { DICTIONARY_WORDS, STARTER_WORD_IDS } from './words.js';
+import { EXPANSION_PACKS } from './wordPacks.js';
 
 // Configuration & Default State
 const STORAGE_KEY = 'vocabquest_offline_data_v1';
+const CUSTOM_WORDS_KEY = 'vocabquest_custom_words_v1';
 const REWARD_CONFIG = {
   perCorrect: 10,
   streakBonusCount: 5,
   streakBonusCoins: 20,
   perfectQuizBonus: 50
 };
+
+// Custom words imported by user or via word packs
+let customWords = [];
+
+// Merged active dictionary getter
+export function getActiveDictionary() {
+  const map = new Map();
+  DICTIONARY_WORDS.forEach(w => map.set(w.id, w));
+  customWords.forEach(w => map.set(w.id, w));
+  return Array.from(map.values());
+}
 
 const ACHIEVEMENTS_DEF = [
   { id: 'first_word', title: 'Curious Explorer', desc: 'Inspect your first dictionary word.', icon: '🔍' },
@@ -73,6 +86,14 @@ function loadState() {
         };
       }
     }
+
+    const rawCustom = localStorage.getItem(CUSTOM_WORDS_KEY);
+    if (rawCustom) {
+      const parsedCustom = JSON.parse(rawCustom);
+      if (Array.isArray(parsedCustom)) {
+        customWords = parsedCustom;
+      }
+    }
   } catch (err) {
     console.warn('Could not load saved state, using default', err);
   }
@@ -80,6 +101,146 @@ function loadState() {
   // Calculate daily streak
   checkDailyStreak();
   applyTheme(state.theme);
+}
+
+// Function to import words list into application
+export function importWords(rawWordsList, autoUnlock = true) {
+  if (!Array.isArray(rawWordsList) || rawWordsList.length === 0) {
+    showToast('No valid words found to import.', 'error');
+    return 0;
+  }
+
+  let importedCount = 0;
+  const existingMap = new Map();
+  getActiveDictionary().forEach(w => existingMap.set(w.id, w));
+
+  const validNewWords = [];
+  const newUnlockedIds = [];
+
+  rawWordsList.forEach((item) => {
+    if (!item) return;
+    const rawWord = item.word || item.name || item.term;
+    if (!rawWord || typeof rawWord !== 'string') return;
+    const cleanWord = rawWord.trim();
+    if (!cleanWord) return;
+
+    const id = (item.id || cleanWord).toLowerCase().replace(/[^a-z0-9]/g, '_');
+    
+    const wordEntry = {
+      id: id,
+      word: cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1),
+      phonetic: item.phonetic || `/${cleanWord.toLowerCase()}/`,
+      pos: item.pos || item.partOfSpeech || 'noun',
+      simpleDef: item.simpleDef || item.def || item.definition || 'A defined term in the vocabulary database.',
+      detailedDef: item.detailedDef || item.detailed || item.simpleDef || item.definition || 'Comprehensive lexical explanation of word meaning and usage.',
+      example: item.example || item.sentence || `The author skillfully utilized the word "${cleanWord}" in context.`,
+      synonyms: Array.isArray(item.synonyms) ? item.synonyms : (item.synonyms ? [item.synonyms] : ["equivalent", "similar term"]),
+      difficulty: ['easy', 'medium', 'hard'].includes(item.difficulty) ? item.difficulty : 'medium',
+      category: item.category || 'Advanced Vocabulary',
+      price: typeof item.price === 'number' ? item.price : 40
+    };
+
+    if (!existingMap.has(wordEntry.id)) {
+      validNewWords.push(wordEntry);
+      existingMap.set(wordEntry.id, wordEntry);
+      if (autoUnlock) {
+        newUnlockedIds.push(wordEntry.id);
+      }
+      importedCount++;
+    }
+  });
+
+  if (importedCount === 0) {
+    showToast('All words in this pack are already present in your dictionary.', 'info');
+    return 0;
+  }
+
+  customWords = [...customWords, ...validNewWords];
+  try {
+    localStorage.setItem(CUSTOM_WORDS_KEY, JSON.stringify(customWords));
+  } catch (err) {
+    console.error('Failed to save custom words', err);
+  }
+
+  if (autoUnlock && newUnlockedIds.length > 0) {
+    state.unlockedWords = Array.from(new Set([...state.unlockedWords, ...newUnlockedIds]));
+  }
+
+  saveState();
+  checkAchievements();
+
+  showToast(`🎉 Successfully imported ${importedCount} words into your dictionary!`, 'success');
+  updateImportModalFooter();
+
+  // Re-render active view
+  if (currentView === 'home') renderHome();
+  else if (currentView === 'dictionary') renderDictionary();
+  else if (currentView === 'book') renderBook();
+  else if (currentView === 'progress') renderProgress();
+
+  return importedCount;
+}
+
+export function parsePastedWordsText(text) {
+  text = text.trim();
+  if (!text) return [];
+
+  // Try JSON first
+  if (text.startsWith('[') || text.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      } else if (typeof parsed === 'object') {
+        return Object.entries(parsed).map(([word, val]) => {
+          if (typeof val === 'string') {
+            return { word, simpleDef: val };
+          } else if (typeof val === 'object' && val !== null) {
+            return { word, ...val };
+          }
+          return { word, simpleDef: String(val) };
+        });
+      }
+    } catch (e) {
+      // Fall through to line parser
+    }
+  }
+
+  // Parse plain text lines
+  const lines = text.split('\n');
+  const results = [];
+
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+
+    let sep = line.indexOf(':');
+    if (sep === -1) sep = line.indexOf(' - ');
+    if (sep === -1) sep = line.indexOf(' = ');
+
+    if (sep !== -1) {
+      const word = line.slice(0, sep).trim();
+      const def = line.slice(sep + (line[sep] === ':' ? 1 : 3)).trim();
+      if (word && def) {
+        results.push({ word, simpleDef: def });
+      }
+    } else {
+      const word = line.trim();
+      if (word && word.length < 35 && !word.includes(' ')) {
+        results.push({ word, simpleDef: `Vocabulary entry for ${word}.` });
+      }
+    }
+  });
+
+  return results;
+}
+
+function updateImportModalFooter() {
+  const countEl = document.getElementById('import-modal-current-count');
+  if (countEl) {
+    const total = getActiveDictionary().length;
+    countEl.textContent = `Active Dictionary: ${total} words (${DICTIONARY_WORDS.length} built-in, ${customWords.length} custom imported)`;
+  }
 }
 
 function saveState() {
@@ -167,20 +328,95 @@ function checkAchievements() {
   }
 }
 
-// Pronunciation with SpeechSynthesis
-function speakWord(text) {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
-    state.pronunciationsCount = (state.pronunciationsCount || 0) + 1;
-    checkAchievements();
-    saveState();
-  } else {
-    showToast('Speech synthesis not supported in this browser.', 'info');
+// Web Speech API Voice Initialization & Pronunciation Controller
+let preferredVoice = null;
+let currentSpeakingText = null;
+
+function initVoices() {
+  if (!('speechSynthesis' in window)) return;
+  const loadVoices = () => {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return;
+    // Find natural English voice if possible
+    preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Karen') || v.name.includes('Oliver')))
+      || voices.find(v => v.lang === 'en-US')
+      || voices.find(v => v.lang.startsWith('en'))
+      || voices[0];
+  };
+
+  loadVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = loadVoices;
   }
+}
+initVoices();
+
+function clearSpeakingState() {
+  currentSpeakingText = null;
+  document.querySelectorAll('.is-speaking').forEach(el => el.classList.remove('is-speaking'));
+}
+
+// Pronunciation with Web Speech API
+function speakWord(text, triggerEl = null) {
+  if (!('speechSynthesis' in window)) {
+    showToast('Web Speech API is not supported in this browser.', 'info');
+    return;
+  }
+
+  // If already speaking the same text, toggle off
+  if (window.speechSynthesis.speaking && currentSpeakingText === text) {
+    window.speechSynthesis.cancel();
+    clearSpeakingState();
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  clearSpeakingState();
+
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  utterance.rate = 0.88; // Clear, deliberate speed ideal for vocabulary study
+  utterance.pitch = 1.0;
+
+  if (preferredVoice) {
+    utterance.voice = preferredVoice;
+  } else {
+    initVoices();
+    if (preferredVoice) utterance.voice = preferredVoice;
+  }
+
+  currentSpeakingText = text;
+
+  // Add animated visual feedback to the triggering button and any matching buttons
+  const applySpeakingClass = () => {
+    if (triggerEl) triggerEl.classList.add('is-speaking');
+    document.querySelectorAll(`[data-speak-text="${CSS.escape(text)}"]`).forEach(el => {
+      el.classList.add('is-speaking');
+    });
+  };
+
+  applySpeakingClass();
+
+  utterance.onstart = () => {
+    applySpeakingClass();
+  };
+
+  const finishSpeaking = () => {
+    clearSpeakingState();
+  };
+
+  utterance.onend = finishSpeaking;
+  utterance.onerror = finishSpeaking;
+
+  window.speechSynthesis.speak(utterance);
+
+  state.pronunciationsCount = (state.pronunciationsCount || 0) + 1;
+  checkAchievements();
+  saveState();
 }
 
 // Navigation View Handler
@@ -221,7 +457,8 @@ function renderHome() {
   const container = document.getElementById('home-content');
   if (!container) return;
 
-  const totalWords = DICTIONARY_WORDS.length;
+  const allWords = getActiveDictionary();
+  const totalWords = allWords.length;
   const unlockedCount = state.unlockedWords.length;
   const accuracy = state.stats.questionsAnswered > 0 
     ? Math.round((state.stats.correctAnswers / state.stats.questionsAnswered) * 100) 
@@ -229,11 +466,11 @@ function renderHome() {
 
   // Pick Word of the Day (seeded by date for consistency)
   const todayNum = new Date().getDate();
-  const wotd = DICTIONARY_WORDS[todayNum % DICTIONARY_WORDS.length];
+  const wotd = allWords[todayNum % allWords.length] || allWords[0];
   const isWotdUnlocked = state.unlockedWords.includes(wotd.id);
 
   // Recently unlocked words
-  const recentUnlocked = state.unlockedWords.slice(-4).reverse().map(id => DICTIONARY_WORDS.find(w => w.id === id)).filter(Boolean);
+  const recentUnlocked = state.unlockedWords.slice(-4).reverse().map(id => allWords.find(w => w.id === id)).filter(Boolean);
 
   container.innerHTML = `
     <div class="dashboard-grid">
@@ -245,9 +482,13 @@ function renderHome() {
           <p class="hero-phonetic">${wotd.phonetic} · <span style="text-transform: capitalize;">${wotd.pos}</span></p>
           <p class="hero-def">${isWotdUnlocked ? wotd.simpleDef : '🔒 This word is locked in your dictionary book. Unlock it or test your knowledge in the quiz!'}</p>
           <div class="hero-actions">
-            <button class="btn-white" id="home-wotd-speak">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-              Pronounce
+            <button class="btn-white speaker-hero-btn" data-speak-text="${wotd.word}" id="home-wotd-speak" aria-label="Listen to pronunciation of ${wotd.word}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path class="sound-wave sound-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path class="sound-wave sound-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              </svg>
+              <span>Pronounce</span>
             </button>
             <button class="btn-outline-white" id="home-wotd-view">
               ${isWotdUnlocked ? 'View Full Entry' : `Unlock (${wotd.price} Coins)`}
@@ -339,7 +580,8 @@ function renderHome() {
   `;
 
   // Attach Home events
-  document.getElementById('home-wotd-speak')?.addEventListener('click', () => speakWord(wotd.word));
+  const wotdSpeakBtn = document.getElementById('home-wotd-speak');
+  wotdSpeakBtn?.addEventListener('click', () => speakWord(wotd.word, wotdSpeakBtn));
   document.getElementById('home-wotd-view')?.addEventListener('click', () => {
     if (isWotdUnlocked) {
       openWordDetailModal(wotd);
@@ -356,8 +598,10 @@ function renderDictionary() {
   const container = document.getElementById('dictionary-content');
   if (!container) return;
 
+  const allWords = getActiveDictionary();
+
   // Filter words
-  let filtered = DICTIONARY_WORDS.filter(w => {
+  let filtered = allWords.filter(w => {
     // Search query matches word or synonym
     const matchesSearch = !currentSearch || 
       w.word.toLowerCase().includes(currentSearch.toLowerCase()) || 
@@ -375,7 +619,7 @@ function renderDictionary() {
     return matchesSearch && matchesLetter && matchesCat && matchesDiff;
   });
 
-  const categories = Array.from(new Set(DICTIONARY_WORDS.map(w => w.category)));
+  const categories = Array.from(new Set(allWords.map(w => w.category)));
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
   container.innerHTML = `
@@ -385,7 +629,7 @@ function renderDictionary() {
         <p class="section-desc">Search, browse, and master words. Locked words require unlocking in the Book.</p>
       </div>
       <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600;">
-        Showing ${filtered.length} of ${DICTIONARY_WORDS.length} words
+        Showing ${filtered.length} of ${allWords.length} words
       </div>
     </div>
 
@@ -445,8 +689,12 @@ function renderDictionary() {
                 <div class="word-card-title">
                   <span>${w.word}</span>
                   ${isUnlocked ? `
-                    <button style="padding: 2px; color: var(--text-muted);" title="Pronounce" onclick="window.speakWord('${w.word}')">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    <button class="speaker-icon-btn" data-speak-text="${w.word}" title="Listen to pronunciation of ${w.word}" aria-label="Listen to pronunciation of ${w.word}" onclick="event.stopPropagation(); window.speakWord('${w.word}', this)">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path class="sound-wave sound-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        <path class="sound-wave sound-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                      </svg>
                     </button>
                   ` : ''}
                 </div>
@@ -522,10 +770,11 @@ function renderBook() {
   const container = document.getElementById('book-content');
   if (!container) return;
 
-  const totalWords = DICTIONARY_WORDS.length;
+  const allWords = getActiveDictionary();
+  const totalWords = allWords.length;
   const unlockedCount = state.unlockedWords.length;
 
-  let filtered = DICTIONARY_WORDS.filter(w => {
+  let filtered = allWords.filter(w => {
     const isUnlocked = state.unlockedWords.includes(w.id);
     if (bookFilter === 'UNLOCKED') return isUnlocked;
     if (bookFilter === 'LOCKED') return !isUnlocked;
@@ -571,7 +820,16 @@ function renderBook() {
                 </span>
               </div>
               <div class="word-card-title">
-                ${isUnlocked ? w.word : `<span>${w.word.charAt(0)}${'•'.repeat(w.word.length - 2)}${w.word.slice(-1)}</span>`}
+                ${isUnlocked ? `
+                  <span>${w.word}</span>
+                  <button class="speaker-icon-btn" data-speak-text="${w.word}" title="Listen to pronunciation of ${w.word}" aria-label="Listen to pronunciation of ${w.word}" onclick="event.stopPropagation(); window.speakWord('${w.word}', this)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <path class="sound-wave sound-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                      <path class="sound-wave sound-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    </svg>
+                  </button>
+                ` : `<span>${w.word.charAt(0)}${'•'.repeat(w.word.length - 2)}${w.word.slice(-1)}</span>`}
               </div>
               <div class="word-meta-row">
                 <span>${w.category}</span> · <span>${w.pos}</span>
@@ -739,9 +997,10 @@ function renderQuizSetup() {
 }
 
 function startNewQuiz(difficulty) {
+  const allWords = getActiveDictionary();
   // Filter pool by difficulty (fallback to all if pool is too small)
-  let pool = DICTIONARY_WORDS.filter(w => w.difficulty === difficulty);
-  if (pool.length < 10) pool = DICTIONARY_WORDS;
+  let pool = allWords.filter(w => w.difficulty === difficulty);
+  if (pool.length < 10) pool = allWords;
 
   // Shuffle pool to pick 10 unique target words
   const shuffledWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 10);
@@ -752,7 +1011,7 @@ function startNewQuiz(difficulty) {
     let qType = 'word_to_def';
     let questionText = '';
     let correctAnswer = '';
-    let wrongPool = DICTIONARY_WORDS.filter(w => w.id !== targetWord.id);
+    let wrongPool = allWords.filter(w => w.id !== targetWord.id);
     let options = [];
 
     if (typeIndex === 0) {
@@ -1031,7 +1290,7 @@ function renderProgress() {
   const container = document.getElementById('progress-content');
   if (!container) return;
 
-  const totalWords = DICTIONARY_WORDS.length;
+  const totalWords = getActiveDictionary().length;
   const accuracy = state.stats.questionsAnswered > 0 
     ? Math.round((state.stats.correctAnswers / state.stats.questionsAnswered) * 100) 
     : 0;
@@ -1042,7 +1301,8 @@ function renderProgress() {
         <h2 class="section-title">Progress & Statistics</h2>
         <p class="section-desc">Track your learning journey, quiz achievements, and data backup options.</p>
       </div>
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-primary" id="progress-open-import-btn" style="font-size: 0.85rem;">+ Import Words</button>
         <button class="btn-secondary" id="progress-export-btn">Export Data (JSON)</button>
         <button class="btn-secondary" id="progress-import-btn">Import Data</button>
         <button class="btn-secondary" style="color: var(--error);" id="progress-reset-btn">Reset All</button>
@@ -1216,24 +1476,39 @@ function openWordDetailModal(word) {
   const content = document.getElementById('word-modal-content');
 
   const isBookmarked = state.bookmarks.includes(word.id);
+  const escapedExample = word.example.replace(/"/g, '&quot;').replace(/'/g, "\\'");
 
   content.innerHTML = `
-    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 12px; flex-wrap: wrap;">
       <div>
         <span class="diff-tag diff-${word.difficulty}" style="font-size: 0.8rem; font-weight: 700;">${word.difficulty.toUpperCase()}</span>
         <h2 style="font-size: 2rem; font-weight: 800; margin-top: 4px; display: flex; align-items: center; gap: 10px;">
           <span>${word.word}</span>
-          <button style="padding: 4px; color: var(--primary);" title="Pronounce" onclick="window.speakWord('${word.word}')">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          <button class="speaker-icon-btn" data-speak-text="${word.word}" title="Listen to pronunciation of ${word.word}" aria-label="Listen to pronunciation of ${word.word}" onclick="window.speakWord('${word.word}', this)">
+            <svg class="speaker-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path class="sound-wave sound-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path class="sound-wave sound-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
           </button>
         </h2>
-        <div style="font-size: 0.95rem; color: var(--text-muted); font-style: italic;">
-          ${word.phonetic} · <span style="text-transform: capitalize;">${word.pos}</span>
+        <div style="font-size: 0.95rem; color: var(--text-muted); font-style: italic; margin-top: 2px;">
+          ${word.phonetic} · <span style="text-transform: capitalize;">${word.pos}</span> · <span>${word.category}</span>
         </div>
       </div>
-      <button class="bookmark-icon-btn ${isBookmarked ? 'active' : ''}" style="padding: 8px;" onclick="window.toggleBookmarkModal('${word.id}')">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="${isBookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-      </button>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="speaker-btn speaker-btn-lg" data-speak-text="${word.word}" title="Listen to pronunciation" aria-label="Listen to pronunciation of ${word.word}" onclick="window.speakWord('${word.word}', this)">
+          <svg class="speaker-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path class="sound-wave sound-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path class="sound-wave sound-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <span>Pronounce</span>
+        </button>
+        <button class="bookmark-icon-btn ${isBookmarked ? 'active' : ''}" style="padding: 8px;" title="Bookmark word" aria-label="Bookmark word" onclick="window.toggleBookmarkModal('${word.id}')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="${isBookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        </button>
+      </div>
     </div>
 
     <div style="margin: 18px 0; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
@@ -1243,7 +1518,13 @@ function openWordDetailModal(word) {
     </div>
 
     <div style="background: var(--bg-subtle); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 18px;">
-      <h4 style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;">Example In Context</h4>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <h4 style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Example In Context</h4>
+        <button class="speaker-btn-inline" data-speak-text="${escapedExample}" title="Hear sentence pronunciation" aria-label="Hear sentence pronunciation" onclick="window.speakWord('${escapedExample}', this)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          <span>Hear sentence</span>
+        </button>
+      </div>
       <p style="font-style: italic; font-size: 0.95rem; color: var(--text-main);">"${word.example}"</p>
     </div>
 
@@ -1264,16 +1545,16 @@ function closeAllModals() {
 
 // Window Globals for inline HTML event bindings
 window.viewWordModal = function(id) {
-  const word = DICTIONARY_WORDS.find(w => w.id === id);
+  const word = getActiveDictionary().find(w => w.id === id);
   if (word) openWordDetailModal(word);
 };
 
-window.speakWord = function(text) {
-  speakWord(text);
+window.speakWord = function(text, btnEl = null) {
+  speakWord(text, btnEl);
 };
 
 window.promptUnlock = function(id) {
-  const word = DICTIONARY_WORDS.find(w => w.id === id);
+  const word = getActiveDictionary().find(w => w.id === id);
   if (word) promptUnlockWord(word);
 };
 
@@ -1291,9 +1572,49 @@ window.toggleBookmark = function(id) {
 
 window.toggleBookmarkModal = function(id) {
   window.toggleBookmark(id);
-  const word = DICTIONARY_WORDS.find(w => w.id === id);
+  const word = getActiveDictionary().find(w => w.id === id);
   if (word) openWordDetailModal(word);
 };
+
+window.importPresetPack = function(packKey) {
+  if (packKey === 'all') {
+    const allPackWords = [
+      ...EXPANSION_PACKS.gre,
+      ...EXPANSION_PACKS.science,
+      ...EXPANSION_PACKS.literature
+    ];
+    importWords(allPackWords, true);
+  } else if (EXPANSION_PACKS[packKey]) {
+    importWords(EXPANSION_PACKS[packKey], true);
+  }
+};
+
+window.clearCustomWords = function() {
+  if (customWords.length === 0) {
+    showToast('No custom words to remove.', 'info');
+    return;
+  }
+  if (window.confirm(`Remove ${customWords.length} custom imported words? Built-in dictionary words will be kept.`)) {
+    customWords = [];
+    try {
+      localStorage.removeItem(CUSTOM_WORDS_KEY);
+    } catch (e) {}
+    showToast('Custom imported words removed.', 'info');
+    updateImportModalFooter();
+    if (currentView === 'home') renderHome();
+    else if (currentView === 'dictionary') renderDictionary();
+    else if (currentView === 'book') renderBook();
+    else if (currentView === 'progress') renderProgress();
+  }
+};
+
+function openImportWordsModal() {
+  const modal = document.getElementById('import-words-modal');
+  if (modal) {
+    updateImportModalFooter();
+    modal.classList.add('active');
+  }
+}
 
 // Global Search Event
 function handleGlobalSearch(query) {
@@ -1336,6 +1657,84 @@ document.addEventListener('DOMContentLoaded', () => {
       handleGlobalSearch(e.target.value);
     });
   }
+
+  // Import Words Triggers
+  document.getElementById('top-import-words-btn')?.addEventListener('click', openImportWordsModal);
+  document.getElementById('progress-open-import-btn')?.addEventListener('click', openImportWordsModal);
+
+  // Import Modal Tabs
+  const tabPacksBtn = document.getElementById('import-tab-btn-packs');
+  const tabCustomBtn = document.getElementById('import-tab-btn-custom');
+  const tabPacksContent = document.getElementById('import-tab-packs');
+  const tabCustomContent = document.getElementById('import-tab-custom');
+
+  tabPacksBtn?.addEventListener('click', () => {
+    tabPacksBtn.classList.add('active');
+    tabCustomBtn?.classList.remove('active');
+    if (tabPacksContent) tabPacksContent.style.display = 'block';
+    if (tabCustomContent) tabCustomContent.style.display = 'none';
+  });
+
+  tabCustomBtn?.addEventListener('click', () => {
+    tabCustomBtn.classList.add('active');
+    tabPacksBtn?.classList.remove('active');
+    if (tabCustomContent) tabCustomContent.style.display = 'block';
+    if (tabPacksContent) tabPacksContent.style.display = 'none';
+  });
+
+  // Custom Text Import Submit
+  document.getElementById('import-custom-submit-btn')?.addEventListener('click', () => {
+    const textEl = document.getElementById('import-custom-text');
+    const autoUnlockEl = document.getElementById('import-auto-unlock');
+    if (!textEl) return;
+    const text = textEl.value.trim();
+    if (!text) {
+      showToast('Please enter words or paste JSON data.', 'info');
+      return;
+    }
+    const parsed = parsePastedWordsText(text);
+    if (!parsed || parsed.length === 0) {
+      showToast('Could not parse any valid words from input.', 'error');
+      return;
+    }
+    const autoUnlock = autoUnlockEl ? autoUnlockEl.checked : true;
+    const count = importWords(parsed, autoUnlock);
+    if (count > 0) {
+      textEl.value = '';
+      closeAllModals();
+    }
+  });
+
+  // File Upload Button in Import Modal
+  document.getElementById('import-upload-file-btn')?.addEventListener('click', () => {
+    const autoUnlockEl = document.getElementById('import-auto-unlock');
+    const autoUnlock = autoUnlockEl ? autoUnlockEl.checked : true;
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json,application/json,text/plain';
+    fileInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const content = ev.target.result;
+          const parsed = parsePastedWordsText(content);
+          if (parsed && parsed.length > 0) {
+            importWords(parsed, autoUnlock);
+            closeAllModals();
+          } else {
+            showToast('No recognizable words found in file.', 'error');
+          }
+        } catch (err) {
+          showToast('Failed to read file.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+    fileInput.click();
+  });
 
   // Modal Closers
   document.querySelectorAll('.modal-close-trigger').forEach(btn => {

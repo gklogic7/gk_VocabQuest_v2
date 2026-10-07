@@ -779,11 +779,133 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 .bookmark-icon-btn {
   color: var(--text-faint);
-  padding: 4px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.bookmark-icon-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-subtle);
 }
 
 .bookmark-icon-btn.active {
   color: #f59e0b;
+}
+
+/* Audio & Speaker Feature Styles */
+.speaker-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.speaker-icon-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+  transform: scale(1.06);
+}
+
+.speaker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--primary-subtle);
+  color: var(--primary);
+  border: 1px solid rgba(101, 88, 245, 0.25);
+  transition: all var(--transition);
+}
+
+.speaker-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(101, 88, 245, 0.25);
+}
+
+.speaker-btn-lg {
+  padding: 10px 18px;
+  font-size: 0.95rem;
+}
+
+.speaker-btn-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-subtle);
+  border: 1px solid rgba(101, 88, 245, 0.2);
+}
+
+.speaker-btn-inline:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+/* Animated Speaking State */
+@keyframes audioPulseRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(101, 88, 245, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(101, 88, 245, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(101, 88, 245, 0);
+  }
+}
+
+@keyframes soundWaveAnim {
+  0% {
+    opacity: 0.3;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.9);
+  }
+}
+
+.is-speaking {
+  animation: audioPulseRing 1.1s infinite !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  background: var(--primary-subtle) !important;
+}
+
+.is-speaking .sound-wave-1 {
+  animation: soundWaveAnim 0.7s infinite ease-in-out;
+  transform-origin: center;
+}
+
+.is-speaking .sound-wave-2 {
+  animation: soundWaveAnim 0.7s 0.2s infinite ease-in-out;
+  transform-origin: center;
 }
 
 /* Quiz Arena */

@@ -1847,6 +1847,58 @@ export const DICTIONARY_WORDS = [
     difficulty: "medium",
     category: "Nature",
     price: 40
+  },
+  {
+    id: "xenial",
+    word: "Xenial",
+    phonetic: "/ˈziː.ni.əl/",
+    pos: "adjective",
+    simpleDef: "Hospitable, warm, and friendly toward guests or strangers.",
+    detailedDef: "Pertaining to hospitable warmth between host and guest; welcoming to travelers.",
+    example: "The villagers offered a xenial welcome to the tired mountain hikers.",
+    synonyms: ["hospitable", "welcoming", "cordial", "gracious"],
+    difficulty: "hard",
+    category: "Advanced Vocabulary",
+    price: 65
+  },
+  {
+    id: "xenon",
+    word: "Xenon",
+    phonetic: "/ˈzen.ɒn/",
+    pos: "noun",
+    simpleDef: "A heavy, colorless noble gas that emits a bright blue glow in discharge tubes.",
+    detailedDef: "A chemical element of atomic number 54, used in high-intensity lamps and lasers.",
+    example: "Modern headlights often utilize xenon gas to generate crisp illumination.",
+    synonyms: ["noble gas", "chemical element"],
+    difficulty: "medium",
+    category: "Science",
+    price: 45
+  },
+  {
+    id: "yearn",
+    word: "Yearn",
+    phonetic: "/jɜːn/",
+    pos: "verb",
+    simpleDef: "To have an intense, heartfelt longing or desire for something.",
+    detailedDef: "To feel deep wistful tenderness or craving for a person, place, or goal.",
+    example: "Far from his hometown, he began to yearn for the comforting sound of ocean waves.",
+    synonyms: ["long", "pine", "crave", "hanker"],
+    difficulty: "easy",
+    category: "Emotions",
+    price: 25
+  },
+  {
+    id: "yielding",
+    word: "Yielding",
+    phonetic: "/ˈjiːl.dɪŋ/",
+    pos: "adjective",
+    simpleDef: "Giving way under pressure; accommodating and flexible.",
+    detailedDef: "Characterized by gentle compliance or soft elasticity rather than obstinate resistance.",
+    example: "The soft, yielding moss made a comfortable cushion on the forest floor.",
+    synonyms: ["flexible", "compliant", "pliable", "accommodating"],
+    difficulty: "medium",
+    category: "Everyday English",
+    price: 35
   }
 ];
 
