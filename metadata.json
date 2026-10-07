@@ -1,0 +1,6 @@
+{
+  "name": "VocabQuest - Offline Dictionary & Vocabulary Quest",
+  "description": "Offline-first interactive dictionary and vocabulary quest game with pronunciation, quiz challenges, coin rewards, and word unlocking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

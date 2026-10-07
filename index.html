@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VocabQuest - Offline Dictionary & Vocabulary Quest</title>
+    <meta name="description" content="Offline-first interactive dictionary and vocabulary quest game with pronunciation, quiz challenges, coin rewards, and word unlocking." />
+    <meta property="og:title" content="VocabQuest - Offline Dictionary & Vocabulary Quest" />
+    <meta property="og:description" content="Offline-first interactive dictionary and vocabulary quest game with pronunciation, quiz challenges, coin rewards, and word unlocking." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Desktop Sidebar -->
+      <aside class="sidebar" aria-label="Sidebar Navigation">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path><path d="M6 6h10"></path><path d="M6 10h10"></path></svg>
+          </div>
+          <div class="brand-text">
+            <h1>VocabQuest</h1>
+            <span>Offline Dictionary</span>
+          </div>
+        </div>
+
+        <nav class="nav-links" aria-label="Main Navigation">
+          <button class="nav-btn active" data-view="home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Home</span>
+          </button>
+          <button class="nav-btn" data-view="dictionary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <span>Dictionary</span>
+          </button>
+          <button class="nav-btn" data-view="book">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="m9 12 2 2 4-4"></path></svg>
+            <span>Dictionary Book</span>
+          </button>
+          <button class="nav-btn" data-view="quiz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 3 2.5 5.5 4.5 7.5.8.8 1.5 1.7 1.5 2.5h4c0-.8.7-1.7 1.5-2.5 2-2 4.5-4.5 4.5-7.5a8 8 0 0 0-8-8z"></path><line x1="9" y1="22" x2="15" y2="22"></line></svg>
+            <span>Random Quiz</span>
+          </button>
+          <button class="nav-btn" data-view="progress">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
+            <span>Progress & Stats</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="theme-toggle-row">
+            <span id="theme-toggle-text">Light Mode</span>
+            <button id="theme-toggle-btn" class="btn-secondary" style="padding: 4px 8px; font-size: 0.775rem;">
+              Toggle
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Wrapper -->
+      <main class="main-wrapper">
+        <!-- Top Navigation Bar -->
+        <header class="top-bar">
+          <div class="top-bar-search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input type="text" id="global-search-input" placeholder="Search words or definitions..." aria-label="Search dictionary" />
+          </div>
+
+          <div class="top-bar-actions">
+            <div class="stat-chip" title="Daily Active Streak">
+              <span>🔥</span>
+              <span class="header-streak-val">1d</span>
+            </div>
+            
+            <div class="coin-badge" title="Coin Balance (used to unlock words)">
+              <span class="coin-icon">¢</span>
+              <span class="header-coin-val">100</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- Dynamic Content Sections -->
+        <div class="content-area">
+          <section id="view-home" class="view-section active">
+            <div id="home-content"></div>
+          </section>
+
+          <section id="view-dictionary" class="view-section">
+            <div id="dictionary-content"></div>
+          </section>
+
+          <section id="view-book" class="view-section">
+            <div id="book-content"></div>
+          </section>
+
+          <section id="view-quiz" class="view-section">
+            <div id="quiz-content"></div>
+          </section>
+
+          <section id="view-progress" class="view-section">
+            <div id="progress-content"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-nav" aria-label="Mobile Navigation">
+      <button class="mobile-nav-btn active" data-view="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+        <span>Home</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="dictionary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <span>Dictionary</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="book">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path></svg>
+        <span>Book</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="quiz">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 3 2.5 5.5 4.5 7.5.8.8 1.5 1.7 1.5 2.5h4c0-.8.7-1.7 1.5-2.5 2-2 4.5-4.5 4.5-7.5a8 8 0 0 0-8-8z"></path></svg>
+        <span>Quiz</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="progress">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
+        <span>Progress</span>
+      </button>
+    </nav>
+
+    <!-- Word Detail Modal -->
+    <div id="word-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="word-modal-title">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Word Details</span>
+          <button class="modal-close-btn modal-close-trigger" aria-label="Close dialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div id="word-modal-content"></div>
+      </div>
+    </div>
+
+    <!-- Unlock Confirmation Modal -->
+    <div id="unlock-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="unlock-modal-title">
+      <div class="modal-card" style="max-width: 440px;">
+        <div class="modal-header">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Unlock Confirmation</span>
+          <button class="modal-close-btn modal-close-trigger" aria-label="Close dialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div id="unlock-modal-details"></div>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button class="btn-secondary modal-close-trigger" style="flex: 1;">Cancel</button>
+          <button class="btn-primary" id="unlock-confirm-btn" style="flex: 2;">Confirm Unlock</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset Data Modal -->
+    <div id="reset-modal" class="modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal-card" style="max-width: 420px; text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">⚠️</div>
+        <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 8px;">Reset All Progress?</h3>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 20px;">
+          This will restore your starting 100 coins and 20 starter words, and reset your quiz statistics. This action cannot be undone.
+        </p>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-secondary modal-close-trigger" style="flex: 1;">Cancel</button>
+          <button class="btn-primary" id="reset-confirm-btn" style="flex: 1; background: var(--error);">Reset Data</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Application Script -->
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>
